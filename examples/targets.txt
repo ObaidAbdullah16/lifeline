@@ -1,0 +1,10 @@
+# Batch-scan list: owner/name [domain]   (one per line, # starts a comment)
+# Verify each domain before publishing a report.
+kubernetes/kubernetes kubernetes.io
+prometheus/prometheus prometheus.io
+kyverno/kyverno kyverno.io
+pipe-cd/pipecd pipecd.dev
+meshery/meshery meshery.io
+jenkinsci/jenkins jenkins.io
+kubeflow/kubeflow kubeflow.org
+volcano-sh/volcano volcano.sh

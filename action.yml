@@ -1,0 +1,135 @@
+name: Lifeline resilience scorecard
+description: Score how well your project's operations would survive a bad day - domain/TLS, access bus factor, CI hygiene, backups and cost runway.
+author: Obaid Abdullah
+branding:
+  icon: life-buoy
+  color: green
+
+inputs:
+  domain:
+    description: "Project domain to check (default: `domain` in lifeline.yml, or the repository homepage)."
+    required: false
+    default: ""
+  config:
+    description: "Path to lifeline.yml (default: lifeline.yml or .github/lifeline.yml)."
+    required: false
+    default: ""
+  fail-under:
+    description: Fail the step when the score (0-10) is below this value. 0 disables.
+    required: false
+    default: "0"
+  upload-sarif:
+    description: "Upload failing checks to GitHub code scanning (needs `security-events: write`)."
+    required: false
+    default: "false"
+  open-issue-on-drop:
+    description: "Open an issue when the score is lower than in the previous run (needs `issues: write`)."
+    required: false
+    default: "false"
+  github-token:
+    description: Token used for GitHub API calls. An organisation owner's token unlocks the 2FA and owner checks.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  score:
+    description: Overall score, 0-10.
+    value: ${{ steps.scan.outputs.score }}
+  delta:
+    description: Change since the previous run (0 when there is no previous run).
+    value: ${{ steps.scan.outputs.delta }}
+  report-dir:
+    description: Folder with lifeline.json, .md, .html, .sarif and badge JSON.
+    value: ${{ steps.scan.outputs.dir }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      with:
+        go-version: stable
+        cache: false
+
+    - name: Build Lifeline (no third-party dependencies)
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        cd "$ACTION_PATH"
+        go build -trimpath -ldflags "-s -w -X main.version=action" -o "$RUNNER_TEMP/lifeline" ./cmd/lifeline
+
+    - name: Restore the previous score
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ${{ runner.temp }}/lifeline-previous
+        key: lifeline-score-${{ github.run_id }}
+        restore-keys: lifeline-score-
+
+    - name: Scan
+      id: scan
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_DOMAIN: ${{ inputs.domain }}
+        INPUT_CONFIG: ${{ inputs.config }}
+      run: |
+        out="$RUNNER_TEMP/lifeline-report"
+        mkdir -p "$out" "$RUNNER_TEMP/lifeline-previous"
+        args=(scan --repo "$GITHUB_REPOSITORY" --path "$GITHUB_WORKSPACE" --format text
+              --json "$out/lifeline.json" --markdown "$out/lifeline.md" --html "$out/index.html"
+              --sarif "$out/lifeline.sarif" --badge "$out/lifeline-badge.json")
+        if [[ -n "$INPUT_DOMAIN" ]]; then args+=(--domain "$INPUT_DOMAIN"); fi
+        if [[ -n "$INPUT_CONFIG" ]]; then args+=(--config "$INPUT_CONFIG"); fi
+        prev="$RUNNER_TEMP/lifeline-previous/lifeline.json"
+        if [[ -f "$prev" ]]; then args+=(--previous "$prev"); fi
+        "$RUNNER_TEMP/lifeline" "${args[@]}"
+        cat "$out/lifeline.md" >> "$GITHUB_STEP_SUMMARY"
+        score="$(jq -r '.score' "$out/lifeline.json")"
+        delta="$(jq -r '.delta // 0' "$out/lifeline.json")"
+        dropped=false
+        if awk -v d="$delta" 'BEGIN { exit !(d < 0) }'; then dropped=true; fi
+        {
+          echo "score=$score"
+          echo "delta=$delta"
+          echo "dropped=$dropped"
+          echo "dir=$out"
+        } >> "$GITHUB_OUTPUT"
+        cp "$out/lifeline.json" "$prev"
+
+    - name: Save the score for the next run
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ${{ runner.temp }}/lifeline-previous
+        key: lifeline-score-${{ github.run_id }}
+
+    - name: Upload SARIF
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+      with:
+        sarif_file: ${{ steps.scan.outputs.dir }}/lifeline.sarif
+        category: lifeline
+
+    - name: Open an issue when the score drops
+      if: inputs.open-issue-on-drop == 'true' && steps.scan.outputs.dropped == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        SCORE: ${{ steps.scan.outputs.score }}
+        DELTA: ${{ steps.scan.outputs.delta }}
+        REPORT: ${{ steps.scan.outputs.dir }}/lifeline.md
+      run: |
+        gh issue create --repo "$GITHUB_REPOSITORY" \
+          --title "Lifeline resilience score dropped to ${SCORE} (${DELTA})" \
+          --body-file "$REPORT"
+
+    - name: Enforce the minimum score
+      if: inputs.fail-under != '0'
+      shell: bash
+      env:
+        SCORE: ${{ steps.scan.outputs.score }}
+        MIN: ${{ inputs.fail-under }}
+      run: |
+        if awk -v s="$SCORE" -v m="$MIN" 'BEGIN { exit !(s < m) }'; then
+          echo "::error::Lifeline score $SCORE is below the minimum $MIN"
+          exit 1
+        fi

@@ -1,0 +1,26 @@
+# .github/workflows/lifeline.yml - add the scorecard to any repository.
+name: Lifeline
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # every Monday
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write            # only needed for open-issue-on-drop
+      security-events: write   # only needed for upload-sarif
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ObaidAbdullah16/lifeline@v0   # pin to a commit SHA in real use
+        with:
+          open-issue-on-drop: "true"
+          upload-sarif: "true"
+          fail-under: "0"

@@ -1,0 +1,44 @@
+# lifeline.yml - facts Lifeline cannot discover from the outside.
+# Put it in the repository root (or .github/lifeline.yml). Every field is optional.
+
+project: my-project
+
+# Domain to check (otherwise Lifeline uses the repository homepage).
+domain: example.org
+
+# DKIM selectors your mail providers use, if not a common one (Lifeline also tries 23 common selectors).
+dkim_selectors:
+  - acme2026
+
+# How to report vulnerabilities (SECURITY.md or security.txt also count).
+security_contact: security@example.org
+
+# Every backup of state you cannot rebuild from git.
+backups:
+  - name: postgres
+    what: production database (users, orders)
+    location: nightly pg_dump to S3 in a separate AWS account, object lock 30 days
+    isolated: true              # production credentials cannot delete it
+    last_restore_test: 2026-10-01
+  - name: uploads
+    what: user-uploaded files
+    location: S3 versioning in the same bucket
+    isolated: false             # same account: an attacker or AI agent with prod keys can delete both
+    last_restore_test: 2026-06-15
+  - name: git mirror
+    what: source code
+    location: push mirror to Codeberg
+    isolated: true
+    last_restore_test: 2026-09-20
+
+# Infrastructure money. Runway = (credits that will not expire unused + cash) / monthly spend.
+cost:
+  monthly_spend_usd: 85
+  credits_remaining_usd: 900
+  credits_expire: 2027-05-31
+  cash_remaining_usd: 300       # donations / grant money reserved for hosting
+  budget_alerts: true
+
+# Checks that do not apply, with a reason for reviewers. A trailing * ignores a group (LL-BAK-*).
+ignore:
+  - LL-DOM-004   # our registrar does not support DNSSEC; moving registrars in Q1

@@ -1,0 +1,5 @@
+rules:
+  self-repository:
+    # `uses: $/` (July 2026) is not supported by actionlint 1.7.12 yet; the self-scan uses the action from this repo.
+    ignore:
+      - self-scan.yml

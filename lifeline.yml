@@ -1,0 +1,17 @@
+# Lifeline's own resilience facts. The scorecard is only as honest as this file.
+project: lifeline
+security_contact: GitHub private vulnerability reporting (Security tab > Report a vulnerability)
+
+backups:
+  - name: git repository
+    what: source code and release tags (issues and discussions are not included)
+    location: GitHub only
+    # Not isolated yet: if this GitHub account is lost, so is the code.
+    # Roadmap: push-mirror to Codeberg and record a restore test (clone from the mirror).
+    isolated: false
+
+cost:
+  monthly_spend_usd: 0   # runs entirely on GitHub Actions free minutes for public repos
+
+ignore:
+  - LL-COST-002   # no cloud bill, so no billing alerts to configure

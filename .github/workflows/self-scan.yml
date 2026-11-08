@@ -1,0 +1,57 @@
+# Lifeline scans its own repository every week and publishes the report + badge to GitHub Pages.
+name: Self-scan (Pages)
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"   # Mondays 03:17 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write            # open an issue if the score drops
+      security-events: write   # upload failing checks as code-scanning alerts
+    outputs:
+      score: ${{ steps.lifeline.outputs.score }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - id: lifeline
+        uses: ./
+        with:
+          upload-sarif: "true"
+          open-issue-on-drop: "true"
+      - name: Prepare site
+        env:
+          REPORT_DIR: ${{ steps.lifeline.outputs.report-dir }}
+        run: |
+          mkdir -p site
+          cp "$REPORT_DIR"/index.html "$REPORT_DIR"/lifeline.json "$REPORT_DIR"/lifeline-badge.json "$REPORT_DIR"/lifeline.md site/
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: site
+
+  deploy:
+    needs: scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
