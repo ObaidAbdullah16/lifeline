@@ -8,5 +8,6 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}"
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/lifeline /lifeline
-USER nonroot:nonroot
+# Numeric ids (= distroless "nonroot") so Kubernetes can verify it is not root (hadolint DL3066).
+USER 65532:65532
 ENTRYPOINT ["/lifeline"]
