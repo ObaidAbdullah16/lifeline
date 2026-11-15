@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@<sha> # v7
         with: { persist-credentials: false }
-      - uses: ObaidAbdullah16/lifeline@<sha> # v0.3.1
+      - uses: ObaidAbdullah16/lifeline@<sha> # v0.3.2
         with:
           open-issue-on-drop: "true"   # issue when the score drops vs. the previous run
           upload-sarif: "true"         # failing checks in the Security tab

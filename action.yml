@@ -1,5 +1,6 @@
 name: Lifeline resilience scorecard
-description: Score how well your project's operations would survive a bad day - domain/TLS, access bus factor, CI hygiene, backups and cost runway.
+# The GitHub Marketplace requires a description shorter than 125 characters (CI checks it).
+description: "Scores how well your project would survive a bad day: domain/TLS, email, access bus factor, CI, backups, cost runway."
 author: Obaid Abdullah
 branding:
   icon: life-buoy

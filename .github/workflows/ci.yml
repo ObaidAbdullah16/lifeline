@@ -54,6 +54,13 @@ jobs:
           python-version: "3.13"
       - run: pip install -r .github/requirements-ci.txt
       - run: actionlint
+      - name: action.yml fits the GitHub Marketplace (description shorter than 125 characters)
+        run: |
+          desc="$(sed -n 's/^description: *//p' action.yml)"; desc="${desc#\"}"; desc="${desc%\"}"
+          echo "description: ${#desc} characters"
+          if [ -z "$desc" ] || [ "${#desc}" -ge 125 ]; then
+            echo "::error file=action.yml::The Marketplace needs a description shorter than 125 characters"; exit 1
+          fi
       - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
         with:
           version: "1.32.0"   # pinned like the other CI tools
