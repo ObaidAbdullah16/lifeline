@@ -61,9 +61,9 @@ jobs:
           if [ -z "$desc" ] || [ "${#desc}" -ge 125 ]; then
             echo "::error file=action.yml::The Marketplace needs a description shorter than 125 characters"; exit 1
           fi
-      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
-          version: "1.32.0"   # pinned like the other CI tools
+          version: "1.32.0"   # pinned like the other CI tools; must be one this action release knows (v0.8.1+ for 1.32)
           inputs: .github action.yml
           min-severity: low
 
